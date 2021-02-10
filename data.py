@@ -80,11 +80,13 @@ CHAIN_DATA = {'rami_levi': {
         'chain_id': '7290696200003',
         'online_store_id': '7290696200003001097',
         'file_type': 'pricefull'
+    },
+    'mega': {
+            'files_search_url': 'http://publishprice.mega.co.il',
+            'files_directory_url': 'http://publishprice.mega.co.il',
+            'online_store_id': '9090'
     }
 }
-
-
-RAMI_LEVI_ONLINE_CHAIN_ID = 39
 
 
 def new_session(auth=False, chain_data=None):
@@ -122,7 +124,7 @@ def get_full_price_file_name(session, chain_data, store_id=None):
     return full_price_file_name
 
 
-def download_data_file(download_link, file_name, session):
+def download_file(download_link, file_name, session):
     path = '%s/%s' % (COMPRESSED_DATA_PATH, file_name) 
     r = session.get(download_link)
     open(path, 'wb').write(r.content)
@@ -149,16 +151,9 @@ def get_data_rami_levi(force=False):
     
     with new_session(auth=True, chain_data=cd) as session:
         file_name = get_full_price_file_name(session, chain_data=CHAIN_DATA['rami_levi'])
+        download_link = '%s/%s' % (cd['files_directory_url'], file_name)
 
-        if not force and check_data_is_up_to_date(file_name):
-            if input('Your data is up to date, force update?[Y/N]\n').lower() == 'n':
-                return
-
-        print('Download file...')
-        download_data_file('%s/%s' % (cd['files_directory_url'], file_name), file_name, session)
-
-        print('Extracting data...')
-        unzip_zip(file_name)
+        download_data_process(session, download_link, file_name, unzip_zip, force=force)
         
 
 def get_data_shufersal(force=False):
@@ -171,15 +166,7 @@ def get_data_shufersal(force=False):
         download_link = soup.find('tr', {'class': 'webgrid-row-style'}).find('a').get('href')
         file_name = re.search('/([\w-]+\.gz)', download_link).group(1).lower()
         
-        if not force and check_data_is_up_to_date(file_name):
-            if input('Your data is up to date, force update?[Y/N]\n').lower() == 'n':
-                return
-
-        print('Download file...')
-        download_data_file(download_link, file_name, session)  
-        
-        print('Extracting data...')
-        unzip_gzip(file_name)
+        download_data_process(session, download_link, file_name, force=force)
 
 
 def get_data_victory(force=False):
@@ -187,37 +174,54 @@ def get_data_victory(force=False):
 
     with new_session() as session:
         search_page = session.get(cd['files_search_url'] % cd['online_store_id'])
-        soup = BeautifulSoup(search_page.content, "html.parser")
+        soup = BeautifulSoup(search_page.content, 'html.parser')        
         
-        
-        #print(soup.prettify())
-        #return
         download_link = '%s/%s' % (cd['files_directory_url'], soup.select('#download_content td a')[0].get('href'))
-        print(download_link)
         file_name = re.search('/([\w-]+\.xml.gz)', download_link).group(1).lower()
-        print(file_name, force , check_data_is_up_to_date(file_name))
-    
-        if not force and check_data_is_up_to_date(file_name):
-            if input('Your data is up to date, force update?[Y/N]\n').lower() == 'n':
-                return
+        
+        download_data_process(session, download_link, file_name, force=force)
 
-        print('Download file...')
-        download_data_file(download_link, file_name, session)
 
-        print('Extracting data...')
-        unzip_gzip(file_name)
+def get_data_mega(force=True):
+    cd = CHAIN_DATA['mega']
+    with new_session() as session:
+
+        main_page = session.get(cd['files_search_url'])
+        soup = BeautifulSoup(main_page.content, 'html.parser')
+        dir_name = soup.select('td a')[2].get('href').strip('/')
+
+        search_page = session.get('%s/%s' % (cd['files_search_url'], dir_name))
+        soup = BeautifulSoup(search_page.content, 'html.parser')
+        
+        file_name = soup.find(text=re.compile('Price.+9090'))
+        download_link = "%s/%s/%s" % (cd['files_search_url'], dir_name, file_name)
+
+        download_data_process(session, download_link, file_name, force=force)
+
+
+def download_data_process(session, download_link, file_name,unzip=unzip_gzip, force=False):
+    if not force and check_data_is_up_to_date(file_name):
+        if input('Your data is up to date, force update?[Y/N]\n').lower() == 'n':
+            return
+
+    print('Download file...')
+    download_file(download_link, file_name, session)
+
+    print('Extracting data...')
+    unzip(file_name)
+        
 
 def get_all_data(**kwargs):
     get_data_victory(**kwargs)
     get_data_rami_levi(**kwargs)
     get_data_shufersal(**kwargs)
-
+    get_data_mega(**kwargs)
 
 
 def main():
     parser = argparse.ArgumentParser(description='Open-Source tool to download israeli food chains prices data.')
     parser.add_argument('-c','--chain_name', default='all',
-            help='chain name to get data from, options: (ramilevi, shufersal, all)')
+            help='chain name to get data from, options: (ramilevi, shufersal, mega, all)')
     parser.add_argument('-f', '--force', default=False, type=bool,
             help='Force downloding data` even if data is already up to date.')
     args= parser.parse_args()
@@ -228,7 +232,9 @@ def main():
     options = {
             'all': get_all_data,
             'ramilevi': get_data_rami_levi,
-            'shufersal': get_data_shufersal}
+            'shufersal': get_data_shufersal,
+            'victory': get_data_victory,
+            'mega': get_data_mega}
 
     options[args.chain_name](force=args.force)
 
