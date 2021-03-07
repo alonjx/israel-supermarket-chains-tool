@@ -16,7 +16,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 COMPRESSED_DATA_PATH = "./compressed"
 UNCOMPRESSED_DATA_PATH = "./data"
 
-CHAIN_DATA = {'rami_levi': {
+PUBLISH_PRICES_INTEGRATION_TEMPLATE = {
     'username': 'RamiLevi',
     'password': '',
     'online_store_id':39,
@@ -56,11 +56,19 @@ CHAIN_DATA = {'rami_levi': {
         'bRegex': 'false',
         'iSortingCols': 0,
         'cd': '/'}
+}
+
+CHAIN_DATA = {'rami_levi': {**PUBLISH_PRICES_INTEGRATION_TEMPLATE,
+    'username': 'RamiLevi',
+    'online_store_id':39,
+    },
+    'keshet_teamim': {**PUBLISH_PRICES_INTEGRATION_TEMPLATE,
+        'username': 'Keshet',
+        'online_store_id': 518
     },
     'shufersal': {
         'files_search_url': 'http://prices.shufersal.co.il/FileObject/UpdateCategory?catID=2&storeId=',
         'online_store_id': 413 
-
     },
     'victory': {
         'files_search_url': 'http://matrixcatalog.co.il/NBCompetitionRegulations.aspx?fileType=pricefull&code=%s',
@@ -117,11 +125,11 @@ def get_full_price_file_name(session, chain_data, store_id=None):
 
     files = json.loads(req_data.content)
     for f in files['aaData']:
-        if re.search('pricefull', f['DT_RowId']):
-            full_price_file_name = f['DT_RowId']
-            break
+        if re.search('pricefull', f['DT_RowId'], re.IGNORECASE):
+            return f['DT_RowId']
+    
 
-    return full_price_file_name
+    raise 'full price file name not detected'
 
 
 def download_file(download_link, file_name, session):
@@ -146,11 +154,21 @@ def check_data_is_up_to_date(file_name):
     return False
 
 
+def get_data_keshet_teamim(force=False):
+    cd = CHAIN_DATA['keshet_teamim']
+
+    with new_session(auth=True, chain_data=cd) as session:
+        file_name = get_full_price_file_name(session, chain_data=cd)
+        download_link = '%s/%s' % (cd['files_directory_url'], file_name)
+
+        download_data_process(session, download_link, file_name, unzip_gzip, force=force)
+
+
 def get_data_rami_levi(force=False):
     cd = CHAIN_DATA['rami_levi']
     
     with new_session(auth=True, chain_data=cd) as session:
-        file_name = get_full_price_file_name(session, chain_data=CHAIN_DATA['rami_levi'])
+        file_name = get_full_price_file_name(session, chain_data=cd)
         download_link = '%s/%s' % (cd['files_directory_url'], file_name)
 
         download_data_process(session, download_link, file_name, unzip_zip, force=force)
@@ -216,12 +234,12 @@ def get_all_data(**kwargs):
     get_data_rami_levi(**kwargs)
     get_data_shufersal(**kwargs)
     get_data_mega(**kwargs)
-
+    get_data_keshet_teamim(**kwargs)
 
 def main():
     parser = argparse.ArgumentParser(description='Open-Source tool to download israeli food chains prices data.')
     parser.add_argument('-c','--chain_name', default='all',
-            help='chain name to get data from, options: (ramilevi, shufersal, mega, all)')
+            help='chain name to get data from, options: (ramilevi, shufersal, victory, keshet-teamim, mega, all)')
     parser.add_argument('-f', '--force', default=False, type=bool,
             help='Force downloding data` even if data is already up to date.')
     args= parser.parse_args()
@@ -234,7 +252,8 @@ def main():
             'ramilevi': get_data_rami_levi,
             'shufersal': get_data_shufersal,
             'victory': get_data_victory,
-            'mega': get_data_mega}
+            'mega': get_data_mega,
+            'keshet_teamim': get_data_keshet_teamim}
 
     options[args.chain_name](force=args.force)
 

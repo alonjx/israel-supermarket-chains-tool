@@ -14,7 +14,9 @@ None, all you need is Python 3.8 standard library.
 * Shufersal
 * Rami Levi
 * Victory
+* Keshet Teamim
 * Mega
+
 
 ## license
 This project is licensed under the terms of the MIT license.
@@ -28,7 +30,7 @@ Open-Source tool to download israeli food chains prices data.
 optional arguments:
   -h, --help            show this help message and exit
   -c CHAIN_NAME, --chain_name CHAIN_NAME
-                        chain name to get data from, options: (ramilevi, shufersal, mega, all)
+                        chain name to get data from, options: (ramilevi, shufersal, victory, keshet-teamim, mega, all)
   -f FORCE, --force FORCE
                         Force downloding data` even if data is already up to date.
 </pre>
