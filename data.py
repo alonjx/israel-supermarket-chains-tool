@@ -66,6 +66,10 @@ CHAIN_DATA = {'rami_levi': {**PUBLISH_PRICES_INTEGRATION_TEMPLATE,
         'username': 'Keshet',
         'online_store_id': 518
     },
+    'osher_ad': {**PUBLISH_PRICES_INTEGRATION_TEMPLATE,
+    'username': 'osherad',
+    'online_store_id': 10,
+    },
     'shufersal': {
         'files_search_url': 'http://prices.shufersal.co.il/FileObject/UpdateCategory?catID=2&storeId=',
         'online_store_id': 413 
@@ -154,6 +158,16 @@ def check_data_is_up_to_date(file_name):
     return False
 
 
+def get_data_osher_ad(force=False):
+    cd = CHAIN_DATA['osher_ad']
+
+    with new_session(auth=True, chain_data=cd) as session:
+        file_name = get_full_price_file_name(session, chain_data=cd)
+        download_link = '%s/%s' % (cd['files_directory_url'], file_name)
+
+        download_data_process(session, download_link, file_name, unzip_gzip, force=force)
+
+
 def get_data_keshet_teamim(force=False):
     cd = CHAIN_DATA['keshet_teamim']
 
@@ -234,7 +248,9 @@ def get_all_data(**kwargs):
     get_data_rami_levi(**kwargs)
     get_data_shufersal(**kwargs)
     get_data_mega(**kwargs)
+    get_data_osher_ad(**kwargs)
     get_data_keshet_teamim(**kwargs)
+
 
 def main():
     parser = argparse.ArgumentParser(description='Open-Source tool to download israeli food chains prices data.')
@@ -253,7 +269,9 @@ def main():
             'shufersal': get_data_shufersal,
             'victory': get_data_victory,
             'mega': get_data_mega,
-            'keshet_teamim': get_data_keshet_teamim}
+            'osher_ad': get_data_osher_ad,
+            'keshet_teamim': get_data_keshet_teamim
+            }
 
     options[args.chain_name](force=args.force)
 
