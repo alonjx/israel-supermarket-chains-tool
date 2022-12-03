@@ -110,11 +110,11 @@ def new_session(auth=False, chain_data=None):
 
 def authenticate_cerberus_web_client(session, url, post_login_url, username, password="", verify=False):
     login_html = session.get(url, verify=verify)
-    auth_payload = {"username": username, "password": password,"Sumbit": "Sign in"}
+    auth_payload = {"username": username, "password": password, "Sumbit": "Sign in"}
     soup = BeautifulSoup(login_html.content, "html.parser")
 
     try:		
-        csrf_value = soup.find('input', {'id': 'csrftoken'}).get('value')
+        csrf_value = soup.find('meta', {'name': 'csrftoken'}).get('value')
     except:
         print("[!] Error while trying to grab csrftoker hidden input")
     auth_payload["csrf_token"] = csrf_value
